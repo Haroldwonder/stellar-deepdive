@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stellar-deepdive-frontend
+  namespace: stellar-deepdive
+  labels:
+    app: stellar-deepdive
+    component: frontend
+spec:
+  type: ClusterIP
+  sessionAffinity: None
+  ports:
+  - name: http
+    port: 3000
+    targetPort: http
+    protocol: TCP
+  selector:
+    app: stellar-deepdive
+    component: frontend

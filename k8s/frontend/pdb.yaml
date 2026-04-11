@@ -1,0 +1,15 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: stellar-deepdive-frontend
+  namespace: stellar-deepdive
+  labels:
+    app: stellar-deepdive
+    component: frontend
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: stellar-deepdive
+      component: frontend
+  unhealthyPodEvictionPolicy: IfHealthyBudget

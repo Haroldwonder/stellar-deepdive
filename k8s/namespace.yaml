@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: stellar-deepdive
+  labels:
+    name: stellar-deepdive
+    environment: production
+    app: stellar-deepdive
+  annotations:
+    description: "Stellar Deepdive application namespace"

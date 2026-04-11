@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stellar-deepdive-frontend-config
+  namespace: stellar-deepdive
+  labels:
+    app: stellar-deepdive
+    component: frontend
+data:
+  api-url: "http://stellar-deepdive-backend:8080"
