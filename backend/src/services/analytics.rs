@@ -56,6 +56,22 @@ pub fn compute_liquidity_depth(order_book: &OrderBookSnapshot, max_slippage_perc
     buy_liquidity + sell_liquidity
 }
 
+/// Compute the bid-ask spread of an order book in basis points relative to the mid price.
+///
+/// Returns `0.0` if either side of the book is empty or prices are non-positive,
+/// since slippage cannot be meaningfully estimated without both a best bid and best ask.
+pub fn compute_slippage_bps(order_book: &OrderBookSnapshot) -> f64 {
+    let best_bid = order_book.bids.first().map(|b| b.price).unwrap_or(0.0);
+    let best_ask = order_book.asks.first().map(|a| a.price).unwrap_or(0.0);
+
+    if best_bid <= 0.0 || best_ask <= 0.0 {
+        return 0.0;
+    }
+
+    let mid_price = (best_bid + best_ask) / 2.0;
+    ((best_ask - best_bid) / mid_price) * 10_000.0
+}
+
 /// Computes corridor metrics from transactions, calculating average and median settlement latency with optional liquidity depth.
 pub fn compute_corridor_metrics(
     txns: &[CorridorTransaction],

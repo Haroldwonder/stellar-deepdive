@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use chrono::{DateTime, Duration, Timelike, Utc};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::time::{interval, Duration as TokioDuration};
 use tracing::{error, info, warn};
@@ -7,7 +8,9 @@ use uuid::Uuid;
 
 use crate::database::Database;
 use crate::models::corridor::CorridorMetrics;
-use crate::services::analytics::compute_metrics_from_payments;
+use crate::services::analytics::{
+    compute_metrics_from_payments, compute_slippage_bps, OrderBookSnapshot,
+};
 
 const MAX_RETRIES: i32 = 3;
 const RETRY_DELAY_SECS: u64 = 60;
@@ -137,7 +140,10 @@ impl AggregationService {
         }
 
         // Group metrics by hour bucket
-        let hourly_metrics = self.group_by_hour_bucket(corridor_metrics, start_time);
+        // TODO: populate `order_books` with live order book snapshots per corridor
+        // (via StellarRpcClient::fetch_order_book) once wired into the aggregation pipeline.
+        let order_books: HashMap<String, OrderBookSnapshot> = HashMap::new();
+        let hourly_metrics = self.group_by_hour_bucket(corridor_metrics, start_time, &order_books);
 
         // Store aggregated metrics
         let stored_count = self.store_hourly_metrics(hourly_metrics).await?;
@@ -150,18 +156,25 @@ impl AggregationService {
     }
 
     /// Group metrics by hour bucket
+    ///
+    /// `order_books` maps a corridor key to its current order book snapshot, used to
+    /// derive `avg_slippage_bps` (bid-ask spread in basis points) for that corridor.
+    /// Corridors without an entry default to `0.0` slippage.
     fn group_by_hour_bucket(
         &self,
         metrics: Vec<CorridorMetrics>,
         _start_time: DateTime<Utc>, // Reserved for future time-based filtering
+        order_books: &HashMap<String, OrderBookSnapshot>,
     ) -> Vec<HourlyCorridorMetrics> {
-        use std::collections::HashMap;
-
         let mut hourly_map: HashMap<(String, String), HourlyCorridorMetrics> = HashMap::new();
 
         for metric in metrics {
             let hour_bucket = self.truncate_to_hour(metric.date);
             let key = (metric.corridor_key.clone(), hour_bucket.to_rfc3339());
+            let slippage_bps = order_books
+                .get(&metric.corridor_key)
+                .map(compute_slippage_bps)
+                .unwrap_or(0.0);
 
             hourly_map
                 .entry(key)
@@ -185,6 +198,7 @@ impl AggregationService {
 
                     existing.liquidity_depth_usd =
                         (existing.liquidity_depth_usd + metric.liquidity_depth_usd) / 2.0;
+                    existing.avg_slippage_bps = (existing.avg_slippage_bps + slippage_bps) / 2.0;
                 })
                 .or_insert_with(|| HourlyCorridorMetrics {
                     id: Uuid::new_v4().to_string(),
@@ -199,7 +213,7 @@ impl AggregationService {
                     failed_transactions: metric.failed_transactions,
                     success_rate: metric.success_rate,
                     volume_usd: metric.volume_usd,
-                    avg_slippage_bps: 0.0, // TODO: Calculate from order book data
+                    avg_slippage_bps: slippage_bps,
                     avg_settlement_latency_ms: metric.avg_settlement_latency_ms,
                     liquidity_depth_usd: metric.liquidity_depth_usd,
                 });
@@ -326,8 +340,6 @@ impl AggregationService {
 
     /// Compute volume trends from hourly metrics
     fn compute_volume_trends(&self, metrics: Vec<HourlyCorridorMetrics>) -> Vec<VolumeTrend> {
-        use std::collections::HashMap;
-
         let mut corridor_volumes: HashMap<String, Vec<(DateTime<Utc>, f64)>> = HashMap::new();
 
         for metric in metrics {
