@@ -1,5 +1,6 @@
 use axum::{routing::get, Json, Router};
 use serde::Serialize;
+use tracing::debug;
 
 // Define the schema for the metrics overview response
 #[derive(Serialize)]
@@ -14,6 +15,8 @@ pub struct MetricsOverview {
 
 /// Handler for GET /api/metrics/overview
 pub async fn metrics_overview() -> Json<MetricsOverview> {
+    debug!("fetching metrics overview");
+
     // Placeholder: Replace with real data aggregation logic
     let overview = MetricsOverview {
         total_volume: 1234567.89,

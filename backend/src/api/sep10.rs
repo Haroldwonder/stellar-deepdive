@@ -7,6 +7,7 @@ use axum::{
 };
 use serde_json::json;
 use std::sync::Arc;
+use tracing::{debug, info, warn};
 
 use crate::auth::sep10_simple::{ChallengeRequest, Sep10Service, VerificationRequest};
 
@@ -14,6 +15,8 @@ use crate::auth::sep10_simple::{ChallengeRequest, Sep10Service, VerificationRequ
 pub async fn get_info(
     State(sep10_service): State<Arc<Sep10Service>>,
 ) -> Result<Response, Sep10ApiError> {
+    debug!("fetching SEP-10 server info");
+
     let info = json!({
         "authentication_endpoint": "/api/sep10/auth",
         "network_passphrase": sep10_service.network_passphrase,
@@ -29,10 +32,15 @@ pub async fn request_challenge(
     State(sep10_service): State<Arc<Sep10Service>>,
     Json(request): Json<ChallengeRequest>,
 ) -> Result<Response, Sep10ApiError> {
+    debug!(account = %request.account, "generating SEP-10 challenge");
+
     let response = sep10_service
         .generate_challenge(request)
         .await
-        .map_err(|e| Sep10ApiError::ChallengeGenerationFailed(e.to_string()))?;
+        .map_err(|e| {
+            warn!(error = %e, "SEP-10 challenge generation failed");
+            Sep10ApiError::ChallengeGenerationFailed(e.to_string())
+        })?;
 
     Ok((StatusCode::OK, Json(response)).into_response())
 }
@@ -42,10 +50,17 @@ pub async fn verify_challenge(
     State(sep10_service): State<Arc<Sep10Service>>,
     Json(request): Json<VerificationRequest>,
 ) -> Result<Response, Sep10ApiError> {
+    debug!("verifying SEP-10 challenge");
+
     let response = sep10_service
         .verify_challenge(request)
         .await
-        .map_err(|e| Sep10ApiError::VerificationFailed(e.to_string()))?;
+        .map_err(|e| {
+            warn!(error = %e, "SEP-10 challenge verification failed");
+            Sep10ApiError::VerificationFailed(e.to_string())
+        })?;
+
+    info!("SEP-10 challenge verified successfully");
 
     Ok((StatusCode::OK, Json(response)).into_response())
 }
@@ -58,7 +73,12 @@ pub async fn logout(
     sep10_service
         .invalidate_session(&token)
         .await
-        .map_err(|e| Sep10ApiError::LogoutFailed(e.to_string()))?;
+        .map_err(|e| {
+            warn!(error = %e, "SEP-10 logout failed");
+            Sep10ApiError::LogoutFailed(e.to_string())
+        })?;
+
+    info!("SEP-10 session invalidated");
 
     let body = json!({
         "message": "Logged out successfully"

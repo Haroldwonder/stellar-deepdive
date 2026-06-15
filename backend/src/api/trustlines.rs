@@ -7,6 +7,7 @@ use axum::{
 };
 use serde::Deserialize;
 use std::sync::Arc;
+use tracing::{debug, warn};
 
 use crate::models::{TrustlineMetrics, TrustlineSnapshot, TrustlineStat};
 use crate::services::trustline_analyzer::TrustlineAnalyzer;
@@ -67,10 +68,15 @@ pub fn routes(analyzer: Arc<TrustlineAnalyzer>) -> Router {
 async fn get_trustline_metrics(
     State(analyzer): State<Arc<TrustlineAnalyzer>>,
 ) -> ApiResult<Json<TrustlineMetrics>> {
-    let metrics = analyzer.get_metrics().await.unwrap_or(TrustlineMetrics {
-        total_assets_tracked: 0,
-        total_trustlines_across_network: 0,
-        active_assets: 0,
+    debug!("fetching trustline metrics");
+
+    let metrics = analyzer.get_metrics().await.unwrap_or_else(|e| {
+        warn!(error = %e, "failed to fetch trustline metrics, returning zeroed metrics");
+        TrustlineMetrics {
+            total_assets_tracked: 0,
+            total_trustlines_across_network: 0,
+            active_assets: 0,
+        }
     });
     Ok(Json(metrics))
 }
@@ -80,10 +86,17 @@ async fn get_trustline_rankings(
     Query(params): Query<RankingsParams>,
 ) -> ApiResult<Json<Vec<TrustlineStat>>> {
     let limit = params.limit.clamp(1, 200);
+    debug!(limit, "fetching trustline rankings");
+
     let rankings = analyzer
         .get_trustline_rankings(limit)
         .await
-        .unwrap_or_default();
+        .unwrap_or_else(|e| {
+            warn!(error = %e, "failed to fetch trustline rankings");
+            Vec::new()
+        });
+
+    debug!(count = rankings.len(), "returning trustline rankings");
     Ok(Json(rankings))
 }
 
@@ -93,9 +106,15 @@ async fn get_trustline_history(
     Query(params): Query<HistoryParams>,
 ) -> ApiResult<Json<Vec<TrustlineSnapshot>>> {
     let limit = params.limit.clamp(1, 365);
+    debug!(asset_code = %asset_code, asset_issuer = %asset_issuer, limit, "fetching trustline history");
+
     let history = analyzer
         .get_asset_history(&asset_code, &asset_issuer, limit)
         .await
-        .unwrap_or_default();
+        .unwrap_or_else(|e| {
+            warn!(error = %e, asset_code = %asset_code, asset_issuer = %asset_issuer, "failed to fetch trustline history");
+            Vec::new()
+        });
+
     Ok(Json(history))
 }
