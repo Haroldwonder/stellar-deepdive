@@ -1,10 +1,23 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, Address, Env, Symbol, symbol_short};
+use soroban_sdk::{
+    contract, contracterror, contractimpl, panic_with_error, symbol_short, Address, Env, Symbol,
+};
 
 mod acl {
     soroban_sdk::contractimport!(
         file = "../access-control/target/wasm32-unknown-unknown/release/access_control.wasm"
     );
+}
+
+/// Errors returned by `SecureContract`.
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum ContractError {
+    /// `initialize` has not been called yet, so the ACL contract address is unknown.
+    NotInitialized = 1,
+    /// The caller does not have the permission required for this function.
+    AccessDenied = 2,
 }
 
 #[contract]
@@ -31,14 +44,15 @@ impl SecureContract {
     }
 
     fn check_permission(env: &Env, user: &Address, function: Symbol) {
-        let acl_addr: Address = env.storage().instance()
-            .get(&symbol_short!("acl"))
-            .expect("ACL not initialized");
-        
+        let acl_addr: Address = match env.storage().instance().get(&symbol_short!("acl")) {
+            Some(addr) => addr,
+            None => panic_with_error!(env, ContractError::NotInitialized),
+        };
+
         let acl_client = acl::Client::new(env, &acl_addr);
-        
+
         if !acl_client.check_permission(user, &function) {
-            panic!("Access denied");
+            panic_with_error!(env, ContractError::AccessDenied);
         }
     }
 }
