@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useCallback, useRef, useEffect, useState } from "react";
-import ForceGraph2D, { ForceGraphMethods } from "react-force-graph-2d";
+import ForceGraph2D, {
+  ForceGraphMethods,
+  NodeObject,
+  LinkObject,
+} from "react-force-graph-2d";
 import { useSearchParams } from "next/navigation";
 
 interface Node {
@@ -26,7 +30,7 @@ interface Link {
   liquidity?: number;
 }
 
-interface GraphData {
+export interface GraphData {
   nodes: Node[];
   links: Link[];
 }
@@ -36,7 +40,9 @@ interface NetworkGraphProps {
 }
 
 const NetworkGraph: React.FC<NetworkGraphProps> = ({ data }) => {
-  const fgRef = useRef<ForceGraphMethods | undefined>(undefined);
+  const fgRef = useRef<
+    ForceGraphMethods<NodeObject<Node>, LinkObject<Node, Link>> | undefined
+  >(undefined);
   const [hoverNode, setHoverNode] = useState<Node | null>(null);
   const [windowSize, setWindowSize] = useState({ width: 800, height: 600 });
 

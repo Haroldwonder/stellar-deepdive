@@ -39,7 +39,7 @@ export function useRealtimeAnchors(
   const handleMessage = useCallback((message: WsMessage) => {
     switch (message.type) {
       case 'anchor_update':
-        const anchorUpdate = message as AnchorUpdate;
+        const anchorUpdate = message as unknown as AnchorUpdate;
         setAnchorUpdates(prev => {
           const newMap = new Map(prev);
           newMap.set(anchorUpdate.anchor_id, anchorUpdate);

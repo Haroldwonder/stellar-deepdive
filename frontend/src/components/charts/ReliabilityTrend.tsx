@@ -8,7 +8,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  TooltipProps,
+  TooltipContentProps,
   ResponsiveContainer,
 } from "recharts";
 import { ReliabilityDataPoint } from "@/lib/api";
@@ -19,7 +19,7 @@ interface ReliabilityTrendProps {
 
 type TimeWindow = "7d" | "30d" | "90d";
 
-const CustomTooltip = (props: TooltipProps<number, string>) => {
+const CustomTooltip = (props: TooltipContentProps<number, string>) => {
   const { active, payload, label } = props;
   if (active && payload && payload.length) {
     return (

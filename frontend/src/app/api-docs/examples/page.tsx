@@ -74,7 +74,7 @@ def get_corridor_details():
         
         corridor_data = response.json()
         print(f"Success Rate: {corridor_data['success_rate']}%")
-        print(f"Volume: ${corridor_data['volume_usd']:,.2f}")
+        print(f"Volume: \${corridor_data['volume_usd']:,.2f}")
         print(f"Total Transactions: {corridor_data['total_transactions']}")
         
         return corridor_data

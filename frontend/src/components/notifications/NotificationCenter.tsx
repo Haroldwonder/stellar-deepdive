@@ -134,7 +134,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, 
     }
   };
 
-  const handleSelectNotification = (notificationId: string, event: React.MouseEvent) => {
+  const handleSelectNotification = (notificationId: string, event: React.SyntheticEvent) => {
     event.stopPropagation();
     setSelectedNotifications(prev => {
       const newSet = new Set(prev);

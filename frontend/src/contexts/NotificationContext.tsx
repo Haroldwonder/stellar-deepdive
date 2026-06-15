@@ -152,17 +152,17 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     });
   }, [preferences, isClient]);
 
-  const { isConnected, reconnectCount } = useWebSocket({
-    url: websocketUrl,
-    onMessage: handleWebSocketMessage,
-    onConnect: () => {
+  const { isConnected, connectionAttempts: reconnectCount } = useWebSocket(websocketUrl, {
+    onMessage: (message) =>
+      handleWebSocketMessage(message as unknown as WebSocketNotificationPayload),
+    onOpen: () => {
       if (isClient) console.log('WebSocket connected for notifications');
     },
-    onDisconnect: () => {
+    onClose: () => {
       if (isClient) console.log('WebSocket disconnected');
     },
-    onError: (error) => {
-      if (isClient) console.error('WebSocket error:', error);
+    onError: () => {
+      if (isClient) console.error('WebSocket error');
     },
   });
 

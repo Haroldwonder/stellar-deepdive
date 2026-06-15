@@ -5,7 +5,7 @@ import { Download, Image, FileImage } from 'lucide-react';
 import { exportChart, ExportFormat } from '@/lib/chart-export';
 
 interface ChartExportButtonProps {
-  chartRef: React.RefObject<HTMLDivElement>;
+  chartRef: React.RefObject<HTMLDivElement | null>;
   chartName: string;
   className?: string;
 }

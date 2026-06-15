@@ -6,7 +6,7 @@ import {
   Cell,
   ResponsiveContainer,
   Tooltip,
-  TooltipProps,
+  TooltipContentProps,
 } from "recharts";
 import { IssuedAsset } from "@/lib/api";
 
@@ -25,7 +25,7 @@ const COLORS = [
   "#14b8a6", // Teal 500
 ];
 
-const CustomTooltip = (props: TooltipProps<number, string>) => {
+const CustomTooltip = (props: TooltipContentProps<number, string>) => {
   const { active, payload } = props;
   if (active && payload && payload.length) {
     const data = payload[0].payload as IssuedAsset & { percent: number; fill: string };

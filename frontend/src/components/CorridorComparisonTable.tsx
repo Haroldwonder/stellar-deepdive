@@ -91,10 +91,10 @@ export function CorridorComparisonTable({
     const { best, worst } = getBestWorst(metric);
     
     if (value === best) {
-      return <Trophy className="w-4 h-4 text-yellow-500" title="Best" />;
+      return <Trophy className="w-4 h-4 text-yellow-500" aria-label="Best" />;
     }
     if (value === worst) {
-      return <AlertTriangle className="w-4 h-4 text-red-500" title="Worst" />;
+      return <AlertTriangle className="w-4 h-4 text-red-500" aria-label="Worst" />;
     }
     return null;
   };

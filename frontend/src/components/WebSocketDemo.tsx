@@ -19,59 +19,62 @@ export function WebSocketDemo() {
   const [corridors, setCorridors] = useState<Array<{ key: string; title: string; time: string }>>([]);
   const [anchors, setAnchors] = useState<Array<{ name: string; title: string; time: string }>>([]);
 
+  const [error, setError] = useState<string | null>(null);
+
   // Get WebSocket URL from environment
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL || '';
 
   // Main WebSocket connection
-  const { isConnected, isConnecting, error, reconnectCount, connect, disconnect, sendMessage } = useWebSocket({
-    url: wsUrl,
+  const { isConnected, isConnecting, connectionAttempts, send, reconnect } = useWebSocket(wsUrl, {
     onMessage: (message) => {
-      setMessages((prev) => [message, ...prev].slice(0, 10)); // Keep last 10 messages
+      const payload = message as unknown as WebSocketNotificationPayload;
+      setMessages((prev) => [payload, ...prev].slice(0, 10)); // Keep last 10 messages
 
       // Route messages to appropriate handlers based on type
-      const metadata = message.data?.metadata as Record<string, unknown> | undefined;
-      if (message.type === 'new_snapshot') {
+      const metadata = payload.data?.metadata;
+      if (payload.type === 'new_snapshot') {
         setSnapshots((prev) => [
           {
             id: String(metadata?.snapshot_id ?? 'unknown'),
-            title: message.data.title,
+            title: payload.data.title,
             time: new Date().toLocaleTimeString(),
           },
           ...prev,
         ].slice(0, 5));
-      } else if (message.type === 'low_liquidity') {
+      } else if (payload.type === 'low_liquidity') {
         setCorridors((prev) => [
           {
             key: String(metadata?.corridor_key ?? 'unknown'),
-            title: message.data.title,
+            title: payload.data.title,
             time: new Date().toLocaleTimeString(),
           },
           ...prev,
         ].slice(0, 5));
-      } else if (message.type === 'payment_failed') {
+      } else if (payload.type === 'payment_failed') {
         setAnchors((prev) => [
           {
             name: String(metadata?.anchor_name ?? 'unknown'),
-            title: message.data.title,
+            title: payload.data.title,
             time: new Date().toLocaleTimeString(),
           },
           ...prev,
         ].slice(0, 5));
       }
     },
-    onConnect: () => {
+    onOpen: () => {
+      setError(null);
       console.log('WebSocket connected!');
     },
-    onDisconnect: () => {
+    onClose: () => {
       console.log('WebSocket disconnected!');
     },
-    onError: (error) => {
-      console.error('WebSocket error:', error);
+    onError: () => {
+      setError('WebSocket connection error');
     },
   });
 
   const handlePing = () => {
-    sendMessage({ type: 'ping' });
+    send({ type: 'ping' });
   };
 
   return (
@@ -96,20 +99,20 @@ export function WebSocketDemo() {
                 Error: {error}
               </p>
             )}
-            {reconnectCount > 0 && (
+            {connectionAttempts > 0 && (
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Reconnect attempts: {reconnectCount}
+                Reconnect attempts: {connectionAttempts}
               </p>
             )}
           </div>
           <div className="flex gap-2">
             {!isConnected ? (
               <button
-                onClick={connect}
+                onClick={reconnect}
                 disabled={isConnecting}
                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
               >
-                {isConnecting ? 'Connecting...' : 'Connect'}
+                {isConnecting ? 'Connecting...' : 'Reconnect'}
               </button>
             ) : (
               <>
@@ -120,10 +123,10 @@ export function WebSocketDemo() {
                   Send Ping
                 </button>
                 <button
-                  onClick={disconnect}
+                  onClick={reconnect}
                   className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
                 >
-                  Disconnect
+                  Reconnect
                 </button>
               </>
             )}

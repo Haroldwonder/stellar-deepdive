@@ -1,14 +1,28 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import NetworkGraph from '@/components/charts/NetworkGraph';
+import dynamic from 'next/dynamic';
+import type { GraphData } from '@/components/charts/NetworkGraph';
 import { Badge } from '@/components/ui/badge';
 import { Activity, Share2, Info } from 'lucide-react';
 
+// The force-graph library is heavy and canvas-only (no SSR benefit), so load it
+// in its own chunk on demand rather than in the initial route bundle.
+const NetworkGraph = dynamic(() => import('@/components/charts/NetworkGraph'), {
+    ssr: false,
+    loading: () => (
+        <div className="w-full h-full glass rounded-3xl flex items-center justify-center">
+            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground animate-pulse">
+                Loading Graph Engine...
+            </p>
+        </div>
+    ),
+});
+
 export default function NetworkPage() {
-    const [data, setData] = useState(null);
+    const [data, setData] = useState<GraphData | null>(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         async function fetchGraphData() {
@@ -18,7 +32,7 @@ export default function NetworkPage() {
                 const json = await res.json();
                 setData(json);
             } catch (err) {
-                setError(err.message);
+                setError(err instanceof Error ? err.message : 'Failed to fetch graph data');
             } finally {
                 setLoading(false);
             }
@@ -75,9 +89,9 @@ export default function NetworkPage() {
                         <p className="font-bold uppercase tracking-widest">Telemetry Data Unavailable</p>
                         <p className="text-sm text-muted-foreground">{error}</p>
                     </div>
-                ) : (
+                ) : data ? (
                     <NetworkGraph data={data} />
-                )}
+                ) : null}
 
                 {/* Floating Info Card */}
                 <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">

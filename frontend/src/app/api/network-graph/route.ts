@@ -61,7 +61,7 @@ export async function GET() {
 
         // Add Anchor nodes
         anchors.forEach(anchor => {
-            const anchorNode = {
+            const anchorNode: GraphNode = {
                 id: `anchor-${anchor.id}`,
                 name: anchor.name,
                 type: 'anchor',
@@ -80,7 +80,7 @@ export async function GET() {
                 const assetId = `asset-${assetStr}`;
 
                 if (!assetNodesMap.has(assetId)) {
-                    const assetNode = {
+                    const assetNode: GraphNode = {
                         id: assetId,
                         name: code,
                         fullName: assetStr,

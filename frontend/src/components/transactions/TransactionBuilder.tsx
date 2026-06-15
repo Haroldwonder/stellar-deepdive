@@ -179,7 +179,7 @@ export function TransactionBuilder({ onXdrGenerated }: TransactionBuilderProps) 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label className="text-xs text-slate-400">Type</Label>
-                      <Select value={op.type} onValueChange={(val: Operation['type']) => updateOperation(op.id, val)}>
+                      <Select value={op.type} onValueChange={(val) => updateOperation(op.id, val as Operation['type'])}>
                         <SelectTrigger className="bg-slate-800 border-slate-700">
                           <SelectValue />
                         </SelectTrigger>
