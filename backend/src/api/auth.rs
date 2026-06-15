@@ -7,6 +7,7 @@ use axum::{
 };
 use serde_json::json;
 use std::sync::Arc;
+use tracing::{info, warn};
 
 use crate::auth::{AuthService, LoginRequest, LogoutRequest, RefreshTokenRequest};
 use crate::error::ApiError;
@@ -16,9 +17,14 @@ pub async fn login(
     State(auth_service): State<Arc<AuthService>>,
     Json(request): Json<LoginRequest>,
 ) -> Result<Response, ApiError> {
+    let username = request.username.clone();
+
     let response = auth_service.login(request).await.map_err(|_| {
+        warn!(username = %username, "login attempt failed");
         ApiError::unauthorized("INVALID_CREDENTIALS", "Invalid username or password")
     })?;
+
+    info!(username = %username, "user logged in");
 
     Ok((StatusCode::OK, Json(response)).into_response())
 }
@@ -28,10 +34,10 @@ pub async fn refresh(
     State(auth_service): State<Arc<AuthService>>,
     Json(request): Json<RefreshTokenRequest>,
 ) -> Result<Response, ApiError> {
-    let response = auth_service
-        .refresh(request)
-        .await
-        .map_err(|_| ApiError::unauthorized("INVALID_TOKEN", "Invalid or expired token"))?;
+    let response = auth_service.refresh(request).await.map_err(|_| {
+        warn!("token refresh failed: invalid or expired refresh token");
+        ApiError::unauthorized("INVALID_TOKEN", "Invalid or expired token")
+    })?;
 
     Ok((StatusCode::OK, Json(response)).into_response())
 }
@@ -41,10 +47,12 @@ pub async fn logout(
     State(auth_service): State<Arc<AuthService>>,
     Json(request): Json<LogoutRequest>,
 ) -> Result<Response, ApiError> {
-    auth_service
-        .logout(request)
-        .await
-        .map_err(|_| ApiError::unauthorized("INVALID_TOKEN", "Invalid or expired token"))?;
+    auth_service.logout(request).await.map_err(|_| {
+        warn!("logout failed: invalid or expired refresh token");
+        ApiError::unauthorized("INVALID_TOKEN", "Invalid or expired token")
+    })?;
+
+    info!("user logged out");
 
     let body = json!({
         "message": "Logged out successfully"

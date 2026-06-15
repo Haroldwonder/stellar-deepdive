@@ -5,6 +5,7 @@ use axum::{
 };
 use serde::Deserialize;
 use std::sync::Arc;
+use tracing::{debug, warn};
 
 use crate::models::{LiquidityPool, LiquidityPoolSnapshot, LiquidityPoolStats};
 use crate::services::liquidity_pool_analyzer::LiquidityPoolAnalyzer;
@@ -48,17 +49,21 @@ pub fn routes(analyzer: Arc<LiquidityPoolAnalyzer>) -> Router {
 async fn list_pools(
     State(analyzer): State<Arc<LiquidityPoolAnalyzer>>,
 ) -> Json<Vec<LiquidityPool>> {
-    let pools = analyzer.get_all_pools().await.unwrap_or_default();
+    debug!("listing liquidity pools");
+    let pools = analyzer.get_all_pools().await.unwrap_or_else(|e| {
+        warn!(error = %e, "failed to list liquidity pools");
+        Vec::new()
+    });
     Json(pools)
 }
 
 async fn get_pool_stats(
     State(analyzer): State<Arc<LiquidityPoolAnalyzer>>,
 ) -> Json<LiquidityPoolStats> {
-    let stats = analyzer
-        .get_pool_stats()
-        .await
-        .unwrap_or_else(|_| LiquidityPoolStats {
+    debug!("fetching liquidity pool stats");
+    let stats = analyzer.get_pool_stats().await.unwrap_or_else(|e| {
+        warn!(error = %e, "failed to fetch liquidity pool stats, returning zeroed stats");
+        LiquidityPoolStats {
             total_pools: 0,
             total_liquidity_usd: 0.0,
             avg_pool_size_usd: 0.0,
@@ -67,7 +72,8 @@ async fn get_pool_stats(
             total_fees_24h_usd: 0.0,
             avg_apy: 0.0,
             avg_impermanent_loss: 0.0,
-        });
+        }
+    });
     Json(stats)
 }
 
@@ -76,10 +82,14 @@ async fn get_pool_rankings(
     Query(params): Query<RankingsParams>,
 ) -> Json<Vec<LiquidityPool>> {
     let limit = params.limit.clamp(1, 100);
+    debug!(sort_by = %params.sort_by, limit, "fetching liquidity pool rankings");
     let pools = analyzer
         .get_pool_rankings(&params.sort_by, limit)
         .await
-        .unwrap_or_default();
+        .unwrap_or_else(|e| {
+            warn!(error = %e, "failed to fetch liquidity pool rankings");
+            Vec::new()
+        });
     Json(pools)
 }
 
@@ -93,9 +103,13 @@ async fn get_pool_detail(
     State(analyzer): State<Arc<LiquidityPoolAnalyzer>>,
     Path(pool_id): Path<String>,
 ) -> Result<Json<PoolDetailResponse>, axum::http::StatusCode> {
+    debug!(pool_id = %pool_id, "fetching liquidity pool detail");
     match analyzer.get_pool_detail(&pool_id).await {
         Ok((pool, snapshots)) => Ok(Json(PoolDetailResponse { pool, snapshots })),
-        Err(_) => Err(axum::http::StatusCode::NOT_FOUND),
+        Err(e) => {
+            warn!(error = %e, pool_id = %pool_id, "liquidity pool not found");
+            Err(axum::http::StatusCode::NOT_FOUND)
+        }
     }
 }
 
@@ -105,9 +119,13 @@ async fn get_pool_snapshots(
     Query(params): Query<SnapshotParams>,
 ) -> Json<Vec<LiquidityPoolSnapshot>> {
     let limit = params.limit.clamp(1, 500);
+    debug!(pool_id = %pool_id, limit, "fetching liquidity pool snapshots");
     let snapshots = analyzer
         .get_pool_snapshots(&pool_id, limit)
         .await
-        .unwrap_or_default();
+        .unwrap_or_else(|e| {
+            warn!(error = %e, pool_id = %pool_id, "failed to fetch liquidity pool snapshots");
+            Vec::new()
+        });
     Json(snapshots)
 }
