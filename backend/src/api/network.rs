@@ -178,8 +178,32 @@ mod tests {
         assert!(result.is_ok());
 
         let response = result.unwrap().0;
-        assert!(!response.success); // Should be false since we don't actually switch
-        assert!(response.message.contains("restart required"));
+        assert!(response.success);
+        assert!(response.message.contains("Active network switched"));
         assert_eq!(response.network_info.network, StellarNetwork::Testnet);
+        assert!(response.network_info.is_testnet);
+    }
+
+    #[tokio::test]
+    async fn test_switch_network_updates_active_network_info() {
+        switch_network(Json(SwitchNetworkRequest {
+            network: StellarNetwork::Mainnet,
+        }))
+        .await
+        .unwrap();
+
+        let info = get_network_info().await.unwrap().0;
+        assert_eq!(info.network, StellarNetwork::Mainnet);
+        assert!(info.is_mainnet);
+
+        switch_network(Json(SwitchNetworkRequest {
+            network: StellarNetwork::Testnet,
+        }))
+        .await
+        .unwrap();
+
+        let info = get_network_info().await.unwrap().0;
+        assert_eq!(info.network, StellarNetwork::Testnet);
+        assert!(info.is_testnet);
     }
 }
