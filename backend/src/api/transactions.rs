@@ -6,6 +6,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use crate::{
@@ -42,6 +43,8 @@ pub async fn create_transaction(
     State(state): State<AppState>,
     Json(req): Json<CreateTransactionRequest>,
 ) -> Result<Json<PendingTransaction>, (StatusCode, String)> {
+    debug!(source_account = %req.source_account, required_signatures = req.required_signatures, "creating pending transaction");
+
     let tx = state
         .db
         .create_pending_transaction(&req.source_account, &req.xdr, req.required_signatures)
@@ -54,6 +57,8 @@ pub async fn create_transaction(
             )
         })?;
 
+    info!(transaction_id = %tx.id, "created pending transaction");
+
     Ok(Json(tx))
 }
 
@@ -61,6 +66,8 @@ pub async fn get_transaction(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Json<PendingTransactionWithSignatures>, (StatusCode, String)> {
+    debug!(transaction_id = %id, "fetching pending transaction");
+
     let tx = state.db.get_pending_transaction(&id).await.map_err(|e| {
         tracing::error!("Failed to get transaction: {}", e);
         (
@@ -72,6 +79,7 @@ pub async fn get_transaction(
     if let Some(tx) = tx {
         Ok(Json(tx))
     } else {
+        warn!(transaction_id = %id, "pending transaction not found");
         Err((StatusCode::NOT_FOUND, "Transaction not found".to_string()))
     }
 }
@@ -81,6 +89,8 @@ pub async fn add_signature(
     Path(id): Path<String>,
     Json(req): Json<AddSignatureRequest>,
 ) -> Result<StatusCode, (StatusCode, String)> {
+    debug!(transaction_id = %id, signer = %req.signer, "adding transaction signature");
+
     // Basic validation
     let tx_opt = state.db.get_pending_transaction(&id).await.map_err(|_| {
         (
@@ -98,6 +108,7 @@ pub async fn add_signature(
         .iter()
         .any(|s| s.signer == req.signer)
     {
+        warn!(transaction_id = %id, signer = %req.signer, "duplicate signature submission rejected");
         return Err((
             StatusCode::BAD_REQUEST,
             "Signature already exists from this signer".to_string(),
@@ -119,6 +130,7 @@ pub async fn add_signature(
     // Update status if we reached required signatures
     let current_sigs_count = tx_with_sigs.collected_signatures.len() + 1;
     if current_sigs_count as i32 >= tx_with_sigs.transaction.required_signatures {
+        info!(transaction_id = %id, "transaction reached required signature threshold");
         state.db.update_transaction_status(&id, "ready").await.ok();
     }
 
@@ -129,6 +141,8 @@ pub async fn submit_transaction(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Json<TransactionResult>, (StatusCode, String)> {
+    debug!(transaction_id = %id, "submitting transaction");
+
     let tx_opt = state.db.get_pending_transaction(&id).await.map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -142,6 +156,7 @@ pub async fn submit_transaction(
     if (tx_with_sigs.collected_signatures.len() as i32)
         < tx_with_sigs.transaction.required_signatures
     {
+        warn!(transaction_id = %id, "submission rejected: not enough signatures");
         return Err((StatusCode::BAD_REQUEST, "Not enough signatures".to_string()));
     }
 
@@ -159,6 +174,8 @@ pub async fn submit_transaction(
         .update_transaction_status(&id, "submitted")
         .await
         .ok();
+
+    info!(transaction_id = %id, hash = %mock_hash, "transaction submitted");
 
     Ok(Json(TransactionResult {
         hash: mock_hash,

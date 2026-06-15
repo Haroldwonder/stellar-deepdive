@@ -8,6 +8,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::sync::Arc;
+use tracing::{debug, warn};
 use utoipa::ToSchema;
 
 use crate::http_cache::cached_json_response;
@@ -159,7 +160,15 @@ pub async fn estimate_costs(
     let source_currency = normalize_currency(&request.source_currency);
     let destination_currency = normalize_currency(&request.destination_currency);
 
+    debug!(
+        source_currency = %source_currency,
+        destination_currency = %destination_currency,
+        source_amount = request.source_amount,
+        "estimating cross-border payment costs"
+    );
+
     if source_currency.is_empty() || destination_currency.is_empty() {
+        warn!("cost estimate rejected: missing source or destination currency");
         return error_response(
             StatusCode::BAD_REQUEST,
             "source_currency and destination_currency are required",
@@ -167,6 +176,7 @@ pub async fn estimate_costs(
     }
 
     if request.source_amount <= 0.0 || !request.source_amount.is_finite() {
+        warn!(source_amount = request.source_amount, "cost estimate rejected: invalid source_amount");
         return error_response(
             StatusCode::BAD_REQUEST,
             "source_amount must be a positive number",
@@ -175,6 +185,7 @@ pub async fn estimate_costs(
 
     if let Some(destination_amount) = request.destination_amount {
         if destination_amount <= 0.0 || !destination_amount.is_finite() {
+            warn!(destination_amount, "cost estimate rejected: invalid destination_amount");
             return error_response(
                 StatusCode::BAD_REQUEST,
                 "destination_amount must be a positive number when provided",
@@ -193,15 +204,22 @@ pub async fn estimate_costs(
 
     let source_usd_rate = match resolve_usd_rate(&price_feed, &source_currency).await {
         Ok(rate) => rate,
-        Err(error) => return error_response(StatusCode::BAD_REQUEST, &error),
+        Err(error) => {
+            warn!(error = %error, currency = %source_currency, "failed to resolve source USD rate");
+            return error_response(StatusCode::BAD_REQUEST, &error);
+        }
     };
 
     let destination_usd_rate = match resolve_usd_rate(&price_feed, &destination_currency).await {
         Ok(rate) => rate,
-        Err(error) => return error_response(StatusCode::BAD_REQUEST, &error),
+        Err(error) => {
+            warn!(error = %error, currency = %destination_currency, "failed to resolve destination USD rate");
+            return error_response(StatusCode::BAD_REQUEST, &error);
+        }
     };
 
     if destination_usd_rate <= 0.0 {
+        warn!(destination_currency = %destination_currency, rate = destination_usd_rate, "destination USD rate is invalid");
         return error_response(StatusCode::BAD_REQUEST, "destination USD rate is invalid");
     }
 
@@ -227,11 +245,18 @@ pub async fn estimate_costs(
     });
 
     let Some(best_route) = route_estimates.first().cloned() else {
+        warn!("failed to estimate any payment routes");
         return error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "failed to estimate routes",
         );
     };
+
+    debug!(
+        best_route = best_route.route.as_key(),
+        total_fees_source = best_route.breakdown.total_fees_source,
+        "computed cost estimate"
+    );
 
     let response = CostCalculationResponse {
         source_currency: source_currency.clone(),
@@ -268,10 +293,13 @@ pub async fn estimate_costs(
         DEFAULT_CACHE_TTL_SECONDS,
     ) {
         Ok(response) => response,
-        Err(error) => error_response(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            &format!("failed to serialize response: {error}"),
-        ),
+        Err(error) => {
+            warn!(error = %error, "failed to build cached cost estimate response");
+            error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("failed to serialize response: {error}"),
+            )
+        }
     }
 }
 

@@ -7,6 +7,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tracing::{debug, warn};
 use utoipa::{IntoParams, ToSchema};
 
 use crate::services::price_feed::PriceFeedClient;
@@ -117,6 +118,8 @@ pub async fn get_price(
     State(price_feed): State<Arc<PriceFeedClient>>,
     Query(params): Query<GetPriceQuery>,
 ) -> impl IntoResponse {
+    debug!(asset = %params.asset, "fetching price");
+
     match price_feed.get_price(&params.asset).await {
         Ok(price) => {
             let response = PriceResponse {
@@ -127,6 +130,7 @@ pub async fn get_price(
             (StatusCode::OK, Json(response)).into_response()
         }
         Err(e) => {
+            warn!(error = %e, asset = %params.asset, "failed to fetch price");
             let error = ErrorResponse {
                 error: format!("Failed to fetch price: {}", e),
             };
@@ -162,7 +166,10 @@ pub async fn get_prices(
         .filter(|s| !s.is_empty())
         .collect();
 
+    debug!(assets = ?assets, "fetching batch prices");
+
     if assets.is_empty() {
+        warn!("batch price request received with no valid assets");
         let error = ErrorResponse {
             error: "No assets provided".to_string(),
         };
@@ -199,6 +206,8 @@ pub async fn convert_to_usd(
     State(price_feed): State<Arc<PriceFeedClient>>,
     Query(params): Query<ConvertQuery>,
 ) -> impl IntoResponse {
+    debug!(asset = %params.asset, amount = params.amount, "converting asset to usd");
+
     match price_feed
         .convert_to_usd(&params.asset, params.amount)
         .await
@@ -215,6 +224,7 @@ pub async fn convert_to_usd(
             (StatusCode::OK, Json(response)).into_response()
         }
         Err(e) => {
+            warn!(error = %e, asset = %params.asset, amount = params.amount, "failed to convert asset to usd");
             let error = ErrorResponse {
                 error: format!("Failed to convert: {}", e),
             };
@@ -237,6 +247,7 @@ pub async fn convert_to_usd(
 )]
 pub async fn get_cache_stats(State(price_feed): State<Arc<PriceFeedClient>>) -> impl IntoResponse {
     let (total, fresh) = price_feed.cache_stats().await;
+    debug!(total_cached = total, fresh_cached = fresh, "fetched price cache stats");
     let response = CacheStatsResponse {
         total_cached: total,
         fresh_cached: fresh,
