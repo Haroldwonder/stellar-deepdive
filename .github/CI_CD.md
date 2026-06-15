@@ -26,7 +26,7 @@ This document explains the automated checks and workflows configured for Stellar
 
 **Status Badge:**
 ```markdown
-![Backend CI](https://github.com/Ndifreke000/stellar-deepdive/workflows/Backend%20CI/badge.svg)
+![Backend CI](https://github.com/victorisiguzoruzoma874/stellar-deepdive/workflows/Backend%20CI/badge.svg)
 ```
 
 ---
@@ -47,7 +47,7 @@ This document explains the automated checks and workflows configured for Stellar
 
 **Status Badge:**
 ```markdown
-![Frontend CI](https://github.com/Ndifreke000/stellar-deepdive/workflows/Frontend%20CI/badge.svg)
+![Frontend CI](https://github.com/victorisiguzoruzoma874/stellar-deepdive/workflows/Frontend%20CI/badge.svg)
 ```
 
 ---
@@ -71,7 +71,7 @@ This document explains the automated checks and workflows configured for Stellar
 
 **Status Badge:**
 ```markdown
-![Contracts CI](https://github.com/Ndifreke000/stellar-deepdive/workflows/Smart%20Contracts%20CI/badge.svg)
+![Contracts CI](https://github.com/victorisiguzoruzoma874/stellar-deepdive/workflows/Smart%20Contracts%20CI/badge.svg)
 ```
 
 ---
@@ -97,7 +97,7 @@ This document explains the automated checks and workflows configured for Stellar
 
 **Status Badge:**
 ```markdown
-![Full Stack CI](https://github.com/Ndifreke000/stellar-deepdive/workflows/Full%20Stack%20CI/badge.svg)
+![Full Stack CI](https://github.com/victorisiguzoruzoma874/stellar-deepdive/workflows/Full%20Stack%20CI/badge.svg)
 ```
 
 ---
@@ -107,10 +107,10 @@ This document explains the automated checks and workflows configured for Stellar
 Add these to your README.md:
 
 ```markdown
-![Backend CI](https://github.com/Ndifreke000/stellar-deepdive/workflows/Backend%20CI/badge.svg)
-![Frontend CI](https://github.com/Ndifreke000/stellar-deepdive/workflows/Frontend%20CI/badge.svg)
-![Contracts CI](https://github.com/Ndifreke000/stellar-deepdive/workflows/Smart%20Contracts%20CI/badge.svg)
-![Full Stack CI](https://github.com/Ndifreke000/stellar-deepdive/workflows/Full%20Stack%20CI/badge.svg)
+![Backend CI](https://github.com/victorisiguzoruzoma874/stellar-deepdive/workflows/Backend%20CI/badge.svg)
+![Frontend CI](https://github.com/victorisiguzoruzoma874/stellar-deepdive/workflows/Frontend%20CI/badge.svg)
+![Contracts CI](https://github.com/victorisiguzoruzoma874/stellar-deepdive/workflows/Smart%20Contracts%20CI/badge.svg)
+![Full Stack CI](https://github.com/victorisiguzoruzoma874/stellar-deepdive/workflows/Full%20Stack%20CI/badge.svg)
 ```
 
 ---
@@ -261,7 +261,7 @@ cargo test test_name -- --nocapture
 ## 📈 Monitoring
 
 ### GitHub Actions Dashboard
-- View all workflow runs: `https://github.com/Ndifreke000/stellar-deepdive/actions`
+- View all workflow runs: `https://github.com/victorisiguzoruzoma874/stellar-deepdive/actions`
 - Filter by workflow, branch, or status
 - Download artifacts from successful runs
 

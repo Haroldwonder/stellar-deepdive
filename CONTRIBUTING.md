@@ -123,10 +123,7 @@ Then create a Pull Request on GitHub with:
 
 ## 🎯 Finding Issues to Work On
 
-Check out our [70 GitHub issues](./GITHUB_ISSUES.md):
-- **Frontend:** 25 issues (UI, charts, features)
-- **Backend:** 25 issues (API, analytics, performance)
-- **Contracts:** 20 issues (Soroban, security, optimization)
+Check out our [open issues](https://github.com/victorisiguzoruzoma874/stellar-deepdive/issues), spanning frontend (UI, charts, features), backend (API, analytics, performance), and contracts (Soroban, security, optimization).
 
 Look for labels:
 - `good-first-issue` - Great for newcomers
@@ -321,8 +318,8 @@ Contributors will be:
 
 ## 📞 Getting Help
 
-- **Questions:** Open a [Discussion](https://github.com/Ndifreke000/stellar-deepdive/discussions)
-- **Bugs:** Open an [Issue](https://github.com/Ndifreke000/stellar-deepdive/issues)
+- **Questions:** Open a [Discussion](https://github.com/victorisiguzoruzoma874/stellar-deepdive/discussions)
+- **Bugs:** Open an [Issue](https://github.com/victorisiguzoruzoma874/stellar-deepdive/issues)
 - **Chat:** Join Stellar Discord
 
 ---

@@ -16,7 +16,7 @@ Fixes backend compile breakages and hardens Stellar RPC/Horizon deserialization 
 
 ## Related Issue
 <!-- Link to the issue this PR addresses -->
-https://github.com/Ndifreke000/stellar-deepdive/issues/214
+https://github.com/victorisiguzoruzoma874/stellar-deepdive/issues/214
 Closes #214
 
 ## Changes Made
