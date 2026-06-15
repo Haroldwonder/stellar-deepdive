@@ -174,4 +174,98 @@ mod test {
         client.revoke_role(&admin, &user, &Role::Operator);
         assert!(!client.has_role(&user, &Role::Operator));
     }
+
+    #[test]
+    fn test_has_role_false_for_unknown_user() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, AccessControl);
+        let client = AccessControlClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        let stranger = Address::generate(&env);
+
+        env.mock_all_auths();
+        client.initialize(&admin);
+
+        assert!(!client.has_role(&stranger, &Role::Admin));
+        assert!(!client.has_role(&stranger, &Role::Operator));
+    }
+
+    #[test]
+    fn test_check_permission_false_without_role_or_grant() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, AccessControl);
+        let client = AccessControlClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        let user = Address::generate(&env);
+
+        env.mock_all_auths();
+        client.initialize(&admin);
+
+        let func = symbol_short!("transfer");
+
+        // user has no role at all, so no permission
+        assert!(!client.check_permission(&user, &func));
+
+        // grant a role but no permission for that role/function yet
+        client.grant_role(&admin, &user, &Role::Viewer);
+        assert!(!client.check_permission(&user, &func));
+    }
+
+    #[test]
+    fn test_multi_role_user_retains_other_roles_after_revoke() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, AccessControl);
+        let client = AccessControlClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        let user = Address::generate(&env);
+
+        env.mock_all_auths();
+        client.initialize(&admin);
+
+        client.grant_role(&admin, &user, &Role::Operator);
+        client.grant_role(&admin, &user, &Role::Viewer);
+        assert!(client.has_role(&user, &Role::Operator));
+        assert!(client.has_role(&user, &Role::Viewer));
+
+        client.revoke_role(&admin, &user, &Role::Operator);
+        assert!(!client.has_role(&user, &Role::Operator));
+        assert!(client.has_role(&user, &Role::Viewer));
+    }
+
+    #[test]
+    fn test_admin_always_has_permission() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, AccessControl);
+        let client = AccessControlClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+
+        env.mock_all_auths();
+        client.initialize(&admin);
+
+        // Admin has permission for any function, even one nobody granted explicitly.
+        let func = symbol_short!("anything");
+        assert!(client.check_permission(&admin, &func));
+    }
+
+    #[test]
+    #[should_panic(expected = "Unauthorized: missing required role")]
+    fn test_grant_role_by_non_admin_panics() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, AccessControl);
+        let client = AccessControlClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        let user = Address::generate(&env);
+        let other = Address::generate(&env);
+
+        env.mock_all_auths();
+        client.initialize(&admin);
+
+        // `user` is not an admin, so granting a role should panic.
+        client.grant_role(&user, &other, &Role::Viewer);
+    }
 }
