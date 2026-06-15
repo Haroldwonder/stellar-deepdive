@@ -10,6 +10,7 @@ use crate::error::{ApiError, ApiResult};
 use crate::models::corridor::{Corridor, CorridorMetrics};
 use crate::models::SortBy;
 use crate::state::AppState;
+use tracing::{debug, warn};
 
 // Response DTOs matching frontend TypeScript interfaces
 
@@ -124,6 +125,12 @@ pub async fn list_corridors(
     State(app_state): State<AppState>,
     Query(params): Query<ListCorridorsQuery>,
 ) -> ApiResult<Json<Vec<CorridorResponse>>> {
+    debug!(
+        time_period = ?params.time_period,
+        asset_code = ?params.asset_code,
+        "listing corridors"
+    );
+
     let today = Utc::now().date_naive();
 
     // Determine date range based on time_period
@@ -142,6 +149,7 @@ pub async fn list_corridors(
             .get_aggregated_corridor_metrics(start_date, end_date)
             .await
             .map_err(|e| {
+                warn!(error = %e, "failed to fetch aggregated corridor metrics");
                 ApiError::internal(
                     "DATABASE_ERROR",
                     format!("Failed to fetch corridors: {}", e),
@@ -179,6 +187,7 @@ pub async fn list_corridors(
             .get_corridor_metrics_for_date(today)
             .await
             .map_err(|e| {
+                warn!(error = %e, "failed to fetch daily corridor metrics");
                 ApiError::internal(
                     "DATABASE_ERROR",
                     format!("Failed to fetch corridors: {}", e),
@@ -257,6 +266,8 @@ pub async fn list_corridors(
         })
         .collect();
 
+    debug!(count = corridors.len(), "returning corridors");
+
     Ok(Json(corridors))
 }
 
@@ -265,8 +276,11 @@ pub async fn get_corridor_detail(
     State(app_state): State<AppState>,
     Path(corridor_key): Path<String>,
 ) -> ApiResult<Json<CorridorDetailResponse>> {
+    debug!(corridor_key = %corridor_key, "fetching corridor detail");
+
     let parts: Vec<&str> = corridor_key.split("->").collect();
     if parts.len() != 2 {
+        warn!(corridor_key = %corridor_key, "invalid corridor key format");
         return Err(ApiError::bad_request(
             "INVALID_CORRIDOR_FORMAT",
             "Invalid corridor key format",
@@ -277,6 +291,7 @@ pub async fn get_corridor_detail(
     let asset_b_parts: Vec<&str> = parts[1].split(':').collect();
 
     if asset_a_parts.len() != 2 || asset_b_parts.len() != 2 {
+        warn!(corridor_key = %corridor_key, "invalid corridor key format");
         return Err(ApiError::bad_request(
             "INVALID_CORRIDOR_FORMAT",
             "Invalid corridor key format",
@@ -299,6 +314,7 @@ pub async fn get_corridor_detail(
         .get_corridor_metrics(&corridor, start_date, end_date)
         .await
         .map_err(|e| {
+            warn!(error = %e, corridor_key = %corridor_key, "failed to fetch corridor detail");
             ApiError::internal(
                 "DATABASE_ERROR",
                 format!("Failed to fetch corridor detail: {}", e),
@@ -306,6 +322,7 @@ pub async fn get_corridor_detail(
         })?;
 
     if metrics.is_empty() {
+        debug!(corridor_key = %corridor_key, "corridor not found");
         let mut details = HashMap::new();
         details.insert("corridor_id".to_string(), serde_json::json!(corridor_key));
         return Err(ApiError::not_found_with_details(
